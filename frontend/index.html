@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+    <title>Gemi — Voice AI Database Agent</title>
+
+    <style>
+
+        body{
+        font-family: "Segoe UI", Arial, sans-serif;
+        background:#f3f6fb;
+        margin:0;
+        padding:0;
+        }
+
+        .container{
+        max-width:900px;
+        margin:auto;
+        padding:40px;
+        }
+
+        .header{
+        text-align:center;
+        margin-bottom:30px;
+        }
+
+        .header h1{
+        margin:0;
+        color:#1a2b49;
+        font-size:32px;
+        }
+
+        .header p{
+        color:#555;
+        margin-top:10px;
+        }
+
+        .controls{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        flex-wrap:wrap;
+        margin-bottom:20px;
+        }
+
+        select{
+        padding:10px;
+        border-radius:6px;
+        border:1px solid #ccc;
+        }
+
+        button{
+        padding:10px 18px;
+        font-size:15px;
+        border:none;
+        border-radius:6px;
+        cursor:pointer;
+        transition:0.2s;
+        }
+
+        .speak-btn{
+        background:#2563eb;
+        color:white;
+        }
+
+        .speak-btn:hover{
+        background:#1e4fd1;
+        }
+
+        .stop-btn{
+        background:#ef4444;
+        color:white;
+        }
+
+        .stop-btn:hover{
+        background:#d93636;
+        }
+
+        .chat{
+        background:white;
+        padding:25px;
+        border-radius:10px;
+        box-shadow:0 3px 12px rgba(0,0,0,0.08);
+        height:420px;
+        overflow:auto;
+        }
+
+        .message{
+        margin-bottom:14px;
+        line-height:1.5;
+        }
+
+        .user{
+        color:#1e40af;
+        font-weight:600;
+        }
+
+        .ai{
+        color:#111;
+        }
+
+        .footer{
+        text-align:center;
+        margin-top:20px;
+        color:#777;
+        font-size:13px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="header">
+
+        <h1>🎤 Gemi — Voice AI Database Agent</h1>
+
+        <p>Interact with databases using natural speech powered by Gemini AI</p>
+
+    </div>
+
+    <div class="controls">
+
+        <label>Select Voice</label>
+
+        <select id="voiceSelect"></select>
+
+        <button class="speak-btn" onclick="startVoice()">🎙 Speak</button>
+
+        <button class="stop-btn" onclick="stopSpeaking()">⛔ Stop</button>
+
+    </div>
+
+    <div id="chat" class="chat"></div>
+
+    <div class="footer">
+
+        Powered by Gemini AI • FastAPI • MongoDB
+
+    </div>
+
+</div>
+
+<script>
+
+    let voices=[]
+    let recognition
+
+    function loadVoices(){
+
+    voices=speechSynthesis.getVoices()
+
+    const select=document.getElementById("voiceSelect")
+
+    select.innerHTML=""
+
+    voices.forEach((voice,index)=>{
+
+    const option=document.createElement("option")
+
+    option.value=index
+    option.text=voice.name+" ("+voice.lang+")"
+
+    select.appendChild(option)
+
+    })
+
+    }
+
+    speechSynthesis.onvoiceschanged=loadVoices
+    loadVoices()
+
+    function stopSpeaking(){
+
+    speechSynthesis.cancel()
+
+    if(recognition){
+    recognition.stop()
+    }
+
+    }
+
+    function startVoice(){
+
+    speechSynthesis.cancel()
+
+    const voiceIndex=document.getElementById("voiceSelect").value
+
+    const selectedVoice=voices[voiceIndex]
+
+    const lang=selectedVoice.lang
+
+    recognition=new(window.SpeechRecognition||window.webkitSpeechRecognition)()
+
+    recognition.lang=lang
+
+    recognition.start()
+
+    recognition.onresult=async function(event){
+
+    const text=event.results[0][0].transcript
+
+    document.getElementById("chat").innerHTML+=
+    "<div class='message'><span class='user'>You:</span> "+text+"</div>"
+
+    const res=await fetch("/ask",{
+
+    method:"POST",
+
+    headers:{
+    "Content-Type":"application/json"
+    },
+
+    body:JSON.stringify({
+    question:text
+    })
+
+    })
+
+    const data=await res.json()
+
+    document.getElementById("chat").innerHTML+=
+    "<div class='message'><span class='ai'>AI:</span> "+data.response+"</div>"
+
+    speakResponse(data.response,selectedVoice)
+
+    }
+
+    }
+
+    function cleanTextForSpeech(text){
+
+    return text
+    .replace(/[#*`]/g,"")
+    .replace(/\n/g," ")
+    .replace(/\s+/g," ")
+    .trim()
+
+    }
+
+    function speakResponse(text,voice){
+
+    speechSynthesis.cancel()
+
+    const cleanText = cleanTextForSpeech(text)
+
+    const speech = new SpeechSynthesisUtterance()
+
+    speech.text = cleanText
+    speech.voice = voice
+    speech.lang = voice.lang
+    speech.rate = 0.95
+
+    speechSynthesis.speak(speech)
+
+    }
+
+</script>
+
+</body>
+
+</html>
