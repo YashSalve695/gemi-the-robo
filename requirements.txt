@@ -1,6 +1,6 @@
 fastapi
 uvicorn
 pymongo
-google-generativeai
+google-genai
 python-dotenv
 google-cloud-texttospeech
